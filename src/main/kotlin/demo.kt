@@ -153,7 +153,7 @@ class PriceAlert() {
 
         // version 1.2
         //var previous_price : Double? = 0.0
-        val previousPrice = symbolPrice.getOrDefault(symbol, null)
+        val previousPrice = symbolPrice[symbol]
         symbolPrice[symbol] = currentPrice
         val priceMap = mapSympri.getOrDefault(symbol, TreeMap<Double, MutableList<AlertList>>())
         val pairList = listOf<Pair<Double, Double>>(Pair(-(previousPrice ?: Double.POSITIVE_INFINITY), -currentPrice), Pair(previousPrice ?: 0.0, currentPrice))
