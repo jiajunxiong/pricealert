@@ -7,7 +7,6 @@ import org.jetbrains.spek.api.dsl.given
 import org.jetbrains.spek.api.dsl.it
 import org.jetbrains.spek.api.dsl.on
 
-
 object PriceAlertSpec: Spek({
     given("price alert") {
         val pa = PriceAlert()
