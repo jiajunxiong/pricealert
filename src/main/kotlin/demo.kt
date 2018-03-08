@@ -41,8 +41,7 @@ class PriceAlert() {
         }
         */
 
-        // version 1.1
-        /*
+        /* version 1.1
         var newPrice = if (direction == "1") price else -price
         if (mapSympri.getOrDefault(symbol, TreeMap<Double, MutableList<AlertList>>()).isNotEmpty()) {
             var mapPrice = mapSympri.getValue(symbol)
@@ -57,6 +56,8 @@ class PriceAlert() {
             mapSympri.put(symbol, mapPrice)
         }
         */
+
+        // version 1.2
         val newPrice = if (direction == "1") price else -price
         val mapPrice = mapSympri.getOrPut(symbol, { TreeMap() })
         val alertList = mapPrice.getOrPut(newPrice, { mutableListOf() })
@@ -73,7 +74,7 @@ class PriceAlert() {
         }
         */
 
-        // version 1.1
+        // version 1.2
         val priceMap = mapSympri.getOrDefault(symbol, TreeMap<Double, MutableList<AlertList>>())
         val symbolList = priceMap.values
         symbolList.forEach {
