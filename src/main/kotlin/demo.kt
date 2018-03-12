@@ -1,6 +1,14 @@
-package com.cashalgo.demo
 
-import java.util.TreeMap
+import org.eclipse.jetty.server.Server
+import org.glassfish.jersey.jetty.JettyHttpContainerFactory
+import org.glassfish.jersey.server.ResourceConfig
+import java.util.*
+import javax.ws.rs.GET
+import javax.ws.rs.Path
+import javax.ws.rs.Produces
+import javax.ws.rs.QueryParam
+import javax.ws.rs.core.MediaType
+import javax.ws.rs.core.UriBuilder
 
 /**
  * Price Alert.
@@ -17,24 +25,31 @@ import java.util.TreeMap
  * @function checkPriceAlert check price alert.
  * @function clearPriceAlert clear price alert.
  */
-class PriceAlert() {
+@Path("home")
+class PriceAlert {
     private var id: Int = 1
     private var mapSympri = mutableMapOf<String, TreeMap<Double, MutableList<AlertList>>>()
     private var symbolPrice = mutableMapOf<String, Double>()
 
     data class AlertList(val id: Int, val user: String, val symbol: String, val price: Double, val direction: String)
 
-    fun addPriceAlert(user: String, symbol: String, price: Double, direction: String) {
+    @GET
+    @Path("add")
+    @Produces(MediaType.TEXT_PLAIN)
+    fun addPriceAlert(@QueryParam("user") user: String, @QueryParam("symbol") symbol: String, @QueryParam("price") price: Double, @QueryParam("direction") direction: String) {
         val al = AlertList(id, user, symbol, price, direction)
         val newPrice = if (direction == "1") price else -price
         val mapPrice = mapSympri.getOrPut(symbol, { TreeMap() })
         val alertList = mapPrice.getOrPut(newPrice, { mutableListOf() })
         alertList.add(al)
-
         id += 1
+        println("addPriceAlert successful!")
     }
 
-    fun removePriceAlert(user: String, symbol: String) {
+    @GET
+    @Path("remove")
+    @Produces(MediaType.TEXT_PLAIN)
+    fun removePriceAlert(@QueryParam("user") user: String, @QueryParam("symbol") symbol: String) {
         val priceMap = mapSympri.getOrDefault(symbol, TreeMap<Double, MutableList<AlertList>>())
         val symbolList = priceMap.values
         symbolList.forEach {
@@ -42,65 +57,50 @@ class PriceAlert() {
         }
         priceMap.values.removeIf{ it.isEmpty()}
         mapSympri.values.removeIf{ it.isEmpty()}
+        println("removePriceAlert successful!")
     }
 
-    fun checkPriceAlert(symbol: String, currentPrice: Double) : List<Int> {
+    @GET
+    @Path("check")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun checkPriceAlert(@QueryParam("symbol") symbol: String, @QueryParam("currentPrice") currentPrice: Double) : List<Int> {
         val previousPrice = symbolPrice[symbol]
         symbolPrice[symbol] = currentPrice
         val priceMap = mapSympri.getOrDefault(symbol, TreeMap<Double, MutableList<AlertList>>())
         val pairList = listOf<Pair<Double, Double>>(Pair(-(previousPrice ?: Double.POSITIVE_INFINITY), -currentPrice), Pair(previousPrice ?: 0.0, currentPrice))
+        //println(pairList.flatMap { (a,b)->(if (a < b ) priceMap.subMap(a,b) else emptyMap<Double, MutableList<AlertList>>()).map { subs->subs.value }.flatMap { it.map { it.id } } })
         return pairList.flatMap { (a,b)->(if (a < b ) priceMap.subMap(a,b) else emptyMap<Double, MutableList<AlertList>>()).map { subs->subs.value }.flatMap { it.map { it.id } } }
     }
 
+    @GET
+    @Path("clear")
     fun clearPriceAlert() {
         id = 1
         mapSympri.clear()
         symbolPrice.clear()
+        println("clearPriceAlert successful!")
+    }
+}
+
+/**
+ * Executes the given [block] function on this Server and then destroys it.
+ *
+ * This Mimic's the kotlin stdlib's Closeable::use.
+ *
+ * @param block a function to process this Server.
+ */
+public inline fun Server.use(block: (Server) -> Unit) {
+    try {
+        block(this)
+    } finally {
+        this.destroy()
     }
 }
 
 fun main(args: Array<String>) {
-
-    var pa = PriceAlert()
-    /*
-    // case 1
-    pa.checkPriceAlert("00001", 100.0)
-    pa.clearPriceAlert()
-    */
-
-    /*
-    // case 2
-    pa.addPriceAlert("a", "00001", 100.0, "-1")
-    pa.checkPriceAlert("00001", 96.0)
-    pa.removePriceAlert("a", "00002")
-    pa.removePriceAlert("a", "00001")
-    pa.checkPriceAlert("00001", 96.0)
-    pa.clearPriceAlert()
-    */
-
-    /*
-    //case 3
-    pa.addPriceAlert("b", "00002", 50.0, "-1")
-    pa.addPriceAlert("c", "00003", 200.0, "1")
-    pa.checkPriceAlert("00002", 45.0)
-    pa.clearPriceAlert()
-    */
-
-    /*
-    //case 4
-    pa.addPriceAlert("a", "00001", 100.0, "1")
-    pa.addPriceAlert("a", "00001", 105.0, "1")
-    pa.addPriceAlert("b", "00001", 90.0, "-1")
-    pa.addPriceAlert("c", "00002", 50.0, "1")
-    pa.addPriceAlert("d", "00003", 200.0, "-1")
-    pa.addPriceAlert("e", "00003", 180.0, "1")
-    pa.addPriceAlert("f", "00003", 200.0, "-1")
-    pa.checkPriceAlert("00001", 107.0)
-    pa.checkPriceAlert("00001", 93.0)
-    pa.removePriceAlert("a", "00001")
-    pa.checkPriceAlert("00001", 107.0)
-    pa.checkPriceAlert("00003", 190.0)
-    pa.checkPriceAlert("00003", 200.0)
-    pa.clearPriceAlert()
-    */
+    val config = ResourceConfig().register(PriceAlert())
+    val baseUri = UriBuilder.fromUri("http://localhost/").port(2222).build()
+    JettyHttpContainerFactory.createServer(baseUri, config).use { server -> server.join() }
 }
+
+
